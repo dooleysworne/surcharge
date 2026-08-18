@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -246,25 +245,58 @@
             align-items: flex-start;
         }
     }
-    
-/* Clean standard layout rules */
+   
+/* PDF/print report */
 #printSummaryBlock {
-    display: none; /* Safely hidden from your users */
+    font-family: Arial, 'Segoe UI', sans-serif;
+    background: white;
+    color: black;
+    width: 100%;
+    box-sizing: border-box;
 }
 
+/* Hide the report normally */
+.pdf-hidden {
+    display: none !important;
+}
+
+/* Print stylesheet */
 @media print {
-    header, footer, .button-row, .card:not(#printSummaryBlock) {
+    header,
+    footer,
+    .button-row,
+    .card:not(#printSummaryBlock) {
         display: none !important;
     }
+
     #printSummaryBlock {
         display: block !important;
+        visibility: visible !important;
         position: static !important;
         padding: 40px;
-        visibility: visible !important;
     }
 }
 
+/* PDF-only sizing */
+#printSummaryBlock.pdf-large {
+    font-size: 1.8rem;
+}
 
+#printSummaryBlock.pdf-large table {
+    font-size: 1.8rem !important;
+}
+
+#printSummaryBlock.pdf-large h1 {
+    font-size: 3.0rem !important;
+}
+
+#printSummaryBlock.pdf-large h2 {
+    font-size: 2.5rem !important;
+}
+
+#printSummaryBlock.pdf-large p {
+    font-size: 1.4rem !important;
+}
 </style>
 </head>
 <body>
@@ -446,9 +478,7 @@
         </p>
     </section>
     
-<!--<div id="printSummaryBlock" style="font-family: 'Segoe UI', sans-serif;">-->
-<div id="printSummaryBlock">
-
+<div id="printSummaryBlock" class="pdf-hidden">
 
     <h1 style="text-align:center; margin-bottom:5px;">Fuel Surcharge Report</h1>
     <p style="text-align:center; font-size:0.9rem; color:#555; margin-top:0;">
@@ -553,7 +583,9 @@
     </footer>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script>
 // -----------------------------
 // Utility functions
@@ -886,33 +918,123 @@ function printSummary(){
 }
 
 // ---------- PDF ----------
+
 function downloadPDF() {
-    // 1. Force the dynamic fields to populate data
+
     printSummaryFillOnly();
-    
-    // 2. Safely grab the block container
-    const rawTemplate = document.getElementById('printSummaryBlock');
-    if (!rawTemplate) return console.error("Template container missing.");
 
-    // 3. Configure layout rules
-    const opts = {
-        margin: 0.5,
-        filename: 'Fuel-Surcharge-Report.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
-    
-    // 4. Send the inner HTML directly to the generator stream in a visible sandbox wrapper
-    html2pdf()
-        .set(opts)
-        .from(`<div style="font-family:'Segoe UI',sans-serif; padding:30px; background:#fff; color:#000; width:7.5in;">${rawTemplate.innerHTML}</div>`)
-        .save()
-        .catch(err => console.error("PDF Fail:", err));
+    const element = document.getElementById("printSummaryBlock");
+
+    // Show the report
+    element.classList.remove("pdf-hidden");
+    element.style.display = "block";
+    element.style.visibility = "visible";
+
+    // Apply PDF-only larger text
+    element.classList.add("pdf-large");
+
+    html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff"
+    })
+    .then(function(canvas) {
+
+        // Remove PDF-only formatting immediately
+        // after the canvas has been created.
+        element.classList.remove("pdf-large");
+
+        const { jsPDF } = window.jspdf;
+
+        const pdf = new jsPDF({
+            orientation: "portrait",
+            unit: "in",
+            format: "letter"
+        });
+
+        const pageWidth = 8.5;
+        const pageHeight = 11;
+        const margin = 0.5;
+
+        const usableWidth = pageWidth - (margin * 2);
+        const usableHeight = pageHeight - (margin * 2);
+
+        const imageHeight =
+            (canvas.height / canvas.width) * usableWidth;
+
+        const imageData = canvas.toDataURL(
+            "image/jpeg",
+            0.98
+        );
+
+        if (imageHeight <= usableHeight) {
+
+            pdf.addImage(
+                imageData,
+                "JPEG",
+                margin,
+                margin,
+                usableWidth,
+                imageHeight
+            );
+
+        } else {
+
+            let remainingHeight = imageHeight;
+            let position = margin;
+
+            pdf.addImage(
+                imageData,
+                "JPEG",
+                margin,
+                position,
+                usableWidth,
+                imageHeight
+            );
+
+            remainingHeight -= usableHeight;
+
+            while (remainingHeight > 0) {
+
+                position -= usableHeight;
+
+                pdf.addPage();
+
+                pdf.addImage(
+                    imageData,
+                    "JPEG",
+                    margin,
+                    position,
+                    usableWidth,
+                    imageHeight
+                );
+
+                remainingHeight -= usableHeight;
+            }
+        }
+
+        pdf.save("Fuel-Surcharge-Report.pdf");
+
+        // Restore normal page appearance
+        element.classList.add("pdf-hidden");
+        element.style.display = "";
+        element.style.visibility = "";
+
+    })
+    .catch(function(error) {
+
+        console.error("PDF generation error:", error);
+
+        // Make sure the PDF-only class is removed
+        element.classList.remove("pdf-large");
+
+        // Restore normal page appearance
+        element.classList.add("pdf-hidden");
+        element.style.display = "";
+        element.style.visibility = "";
+
+    });
 }
-
-console.log("HTML content being sent to PDF:", htmlString);
-
 </script>
 
 </body>
