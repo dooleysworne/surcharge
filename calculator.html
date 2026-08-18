@@ -1,0 +1,921 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garbage Collection Fuel Surcharge Calculator</title>
+<style>
+    :root {
+        --bg: #f3f5f7;
+        --card: #ffffff;
+        --text: #1f2933;
+        --muted: #5b6773;
+        --border: #d7dde3;
+        --accent: #1769aa;
+        --accent-dark: #0f4f82;
+        --result: #eef7ff;
+        --good: #eaf7ee;
+        --error: #fff0f0;
+        --error-text: #9b1c1c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+    }
+
+    .container {
+        width: min(960px, calc(100% - 28px));
+        margin: 24px auto 40px;
+    }
+
+    header {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+
+    h1 {
+        margin: 0 0 8px;
+        font-size: clamp(1.55rem, 4vw, 2.15rem);
+    }
+
+    h2 {
+        margin: 0 0 16px;
+        font-size: 1.25rem;
+    }
+
+    h3 {
+        margin: 22px 0 8px;
+        font-size: 1.05rem;
+    }
+
+    p { margin: 8px 0; }
+
+    .intro, .note {
+        color: var(--muted);
+    }
+
+    .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 22px;
+        margin-bottom: 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    label {
+        font-weight: 700;
+    }
+
+    .help {
+        font-size: .86rem;
+        color: var(--muted);
+        font-weight: 400;
+    }
+
+    input {
+        width: 100%;
+        padding: 11px 12px;
+        border: 1px solid #aeb8c2;
+        border-radius: 7px;
+        font-size: 1rem;
+        background: #fff;
+        color: var(--text);
+    }
+
+    input:focus {
+        outline: 3px solid rgba(23,105,170,.16);
+        border-color: var(--accent);
+    }
+
+    .button-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    button {
+        border: 0;
+        border-radius: 7px;
+        padding: 12px 20px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .calculate {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    .calculate:hover { background: var(--accent-dark); }
+
+    .reset {
+        background: #e5e9ed;
+        color: var(--text);
+    }
+
+    .error {
+        display: none;
+        background: var(--error);
+        color: var(--error-text);
+        border: 1px solid #e3aaaa;
+        border-radius: 7px;
+        padding: 12px;
+        margin-top: 16px;
+    }
+
+    .result-highlight {
+        background: var(--good);
+        border: 1px solid #b9dfc4;
+        border-radius: 10px;
+        padding: 18px;
+        text-align: center;
+        margin-bottom: 18px;
+    }
+
+    .result-label {
+        font-size: .95rem;
+        color: var(--muted);
+        font-weight: 700;
+    }
+
+    .result-value {
+        font-size: clamp(2rem, 7vw, 3.2rem);
+        font-weight: 800;
+        margin-top: 4px;
+    }
+
+    .result-period {
+        color: var(--muted);
+    }
+
+    .results-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 20px;
+    }
+
+    .result-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+        padding: 9px 0;
+        border-bottom: 1px solid #e5e8eb;
+    }
+
+    .result-line span:first-child {
+        color: var(--muted);
+    }
+
+    .result-line strong {
+        text-align: right;
+    }
+
+    .formula {
+        background: var(--result);
+        border: 1px solid #c9e3f8;
+        border-radius: 8px;
+        padding: 14px;
+        overflow-x: auto;
+        font-family: "Courier New", monospace;
+        font-size: .9rem;
+        white-space: pre-wrap;
+    }
+
+    .sources {
+        font-size: .88rem;
+        color: var(--muted);
+    }
+
+    .sources a {
+        color: var(--accent);
+    }
+
+    footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: .82rem;
+        padding: 10px;
+    }
+
+    @media (max-width: 680px) {
+        .container {
+            width: min(100% - 18px, 960px);
+            margin-top: 10px;
+        }
+
+        header, .card {
+            padding: 17px;
+            border-radius: 9px;
+        }
+
+        .grid, .results-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .button-row button {
+            width: 100%;
+        }
+
+        .result-line {
+            align-items: flex-start;
+        }
+    }
+    
+/* Clean standard layout rules */
+#printSummaryBlock {
+    display: none; /* Safely hidden from your users */
+}
+
+@media print {
+    header, footer, .button-row, .card:not(#printSummaryBlock) {
+        display: none !important;
+    }
+    #printSummaryBlock {
+        display: block !important;
+        position: static !important;
+        padding: 40px;
+        visibility: visible !important;
+    }
+}
+
+
+</style>
+</head>
+<body>
+<div class="container">
+
+    <header>
+        <h1>Garbage Collection Fuel Surcharge Calculator</h1>
+        <p class="intro">
+            Estimate the diesel fuel cost attributable to one neighborhood or subdivision
+            when the garbage truck shares a route with other customers.
+        </p>
+    </header>
+
+    <section class="card">
+        <h2>Route Information</h2>
+
+<div class="grid">
+
+    <!-- Address field -->
+    <div class="field" style="grid-column: 1 / -1;">
+        <label for="userAddress">Your address (street, city, ZIP)</label>
+        <input id="userAddress" type="text" placeholder="123 Main St, Effingham, IL 62401">
+        <div class="help">Enter the service address for this trash route.</div>
+    </div>
+
+    <!-- Centered button -->
+    <div class="field" style="grid-column: 1 / -1; text-align: center;">
+        <button id="calcDistanceBtn" type="button">Calculate distance to landfill</button>
+        <div class="help">Uses road distance from your address to the landfill.</div>
+    </div>
+
+    <!-- Landfill distance field -->
+    <div class="field">
+        <label for="landfillDistance">One-way distance to landfill (miles)</label>
+        <input id="landfillDistance" type="number" min="0" step="0.1" value="10">
+        <div class="help">Distance from the neighborhood to the landfill/disposal facility.</div>
+    </div>
+
+</div>
+
+
+            <div class="field">
+                <label for="neighborhoodMiles">Neighborhood miles per pickup</label>
+                <input id="neighborhoodMiles" type="number" min="0" step="0.1" value="1.5">
+                <div class="help">Approximate miles driven inside this neighborhood during one collection.</div>
+            </div>
+
+            <div class="field">
+                <label for="neighborhoodCustomers">Customers in this neighborhood</label>
+                <input id="neighborhoodCustomers" type="number" min="1" step="1" value="30">
+                <div class="help">Number of customers whose cost you are estimating.</div>
+            </div>
+
+            <div class="field">
+                <label for="routeCustomers">Total customers on the route</label>
+                <input id="routeCustomers" type="number" min="1" step="1" value="150">
+                <div class="help">Customers served by the truck before/around the landfill trip, including this neighborhood.</div>
+            </div>
+
+            <div class="field">
+                <label for="dieselPrice">Current diesel price ($/gallon)</label>
+                <input id="dieselPrice" type="number" min="0" step="0.01" value="5.00">
+            </div>
+
+            <div class="field">
+                <label for="mpg">Garbage truck fuel economy (MPG)</label>
+                <input id="mpg" type="number" min="0.1" step="0.1" value="2.6">
+                <div class="help">Default: 2.6 MPG, based on real-world diesel rear-loader refuse-truck research.</div>
+            </div>
+
+            <div class="field">
+                <label for="pickupsPerMonth">Pickups per month</label>
+                <input id="pickupsPerMonth" type="number" min="0" step="1" value="4">
+            </div>
+
+            <div class="field">
+                <label for="billingMonths">Months in billing period</label>
+                <input id="billingMonths" type="number" min="1" step="1" value="2">
+                <div class="help">For bi-monthly billing, enter 2.</div>
+            </div>
+        </div>
+
+        <div id="error" class="error"></div>
+
+        <div class="button-row">
+            <button class="calculate" type="button" onclick="calculate()">Calculate Fuel Cost</button>
+            <button class="reset" type="button" onclick="resetCalculator()">Reset</button>
+        </div>
+    </section>
+
+    <section id="results" class="card" style="display:none;">
+        <h2>Estimated Fuel Cost</h2>
+
+        <div class="result-highlight">
+            <div class="result-label">ESTIMATED FUEL SURCHARGE PER CUSTOMER</div>
+            <div id="perCustomer" class="result-value">$0.00</div>
+            <div class="result-period">per billing period</div>
+        </div>
+
+<div class="results-grid">
+    <div class="result-line">
+        <span>Landfill round-trip distance</span>
+        <strong id="roundTrip">0 mi</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Neighborhood miles per pickup</span>
+        <strong id="neighborhoodMilesResult">0 mi</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Neighborhood share of route customers</span>
+        <strong id="customerShare">0%</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Landfill miles allocated to neighborhood</span>
+        <strong id="allocatedLandfillMiles">0 mi</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Neighborhood-attributable miles per pickup</span>
+        <strong id="milesPerPickup">0 mi</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Pickups during billing period</span>
+        <strong id="totalPickups">0</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Total attributable miles</span>
+        <strong id="totalMiles">0 mi</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Estimated diesel consumed (shared-route)</span>
+        <strong id="gallons">0 gal</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Shared-route fuel cost for neighborhood</span>
+        <strong id="totalFuelCost">$0.00</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Neighborhood-only fuel cost</span>
+        <strong id="neighborhoodOnlyFuelCost">$0.00</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Neighborhood-only cost per customer</span>
+        <strong id="neighborhoodOnlyPerCustomer">$0.00</strong>
+    </div>
+
+    <div class="result-line">
+        <span>Customers in neighborhood</span>
+        <strong id="customersResult">0</strong>
+    </div>
+    
+    <div class="button-row" style="justify-content:center; margin-top:25px;">
+       <button class="calculate" type="button" onclick="printSummary()">Print Summary</button>
+    </div>
+    
+    <div class="button-row" style="justify-content:center; margin-top:10px;">
+        <button class="calculate" type="button" onclick="downloadPDF()">Download PDF</button>
+    </div>
+    
+</div>
+
+        <h3>How the route-share calculation works</h3>
+        <div id="formula" class="formula"></div>
+
+        <p class="note">
+            The landfill trip is treated as a shared route expense. This calculator assigns
+            the neighborhood a percentage of the landfill round-trip based on its percentage
+            of the route's customers. Miles driven inside the neighborhood are assigned
+            entirely to that neighborhood.
+        </p>
+    </section>
+    
+<!--<div id="printSummaryBlock" style="font-family: 'Segoe UI', sans-serif;">-->
+<div id="printSummaryBlock">
+
+
+    <h1 style="text-align:center; margin-bottom:5px;">Fuel Surcharge Report</h1>
+    <p style="text-align:center; font-size:0.9rem; color:#555; margin-top:0;">
+        Prepared for: <span id="printAddress"></span>
+    </p>
+
+    <hr style="margin:20px 0;">
+
+    <h2 style="margin-bottom:8px;">Route Information</h2>
+    <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+        <tr><td><strong>Landfill round-trip distance</strong></td><td id="printLandfill"></td></tr>
+        <tr><td><strong>Neighborhood miles per pickup</strong></td><td id="printNeighborhoodMiles"></td></tr>
+        <tr><td><strong>Neighborhood customers</strong></td><td id="printNeighborhoodCustomers"></td></tr>
+        <tr><td><strong>Total route customers</strong></td><td id="printRouteCustomers"></td></tr>
+        <tr><td><strong>Pickups during billing period</strong></td><td id="printPickups"></td></tr>
+    </table>
+
+    <hr style="margin:20px 0;">
+
+    <h2 style="margin-bottom:8px;">Shared-Route Fuel Allocation</h2>
+    <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+        <tr><td><strong>Total attributable miles</strong></td><td id="printTotalMiles"></td></tr>
+        <tr><td><strong>Diesel consumed</strong></td><td id="printGallons"></td></tr>
+        <tr><td><strong>Fuel cost (shared-route)</strong></td><td id="printFuelCost"></td></tr>
+        <tr><td><strong>Cost per customer</strong></td><td id="printPerCustomer"></td></tr>
+    </table>
+
+    <hr style="margin:20px 0;">
+
+    <h2 style="margin-bottom:8px;">Neighborhood-Only Fuel Cost</h2>
+    <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+        <tr><td><strong>Billing Period Neighborhood-Only Miles</strong></td><td id="printNeighborhoodOnlyMiles"></td></tr>
+        <tr><td><strong>Diesel consumed</strong></td><td id="printNeighborhoodOnlyGallons"></td></tr>
+        <tr><td><strong>Fuel cost (neighborhood-only)</strong></td><td id="printNeighborhoodOnlyFuelCost"></td></tr>
+        <tr><td><strong>Cost per customer</strong></td><td id="printNeighborhoodOnlyPerCustomer"></td></tr>
+    </table>
+
+    <hr style="margin:20px 0;">
+
+    <p style="font-size:0.85rem; color:#555; line-height:1.4;">
+        Shared-route values include landfill travel allocated by customer share.
+        Neighborhood-only values reflect fuel usage for collection inside the neighborhood alone.
+        This report is intended to provide a transparent breakdown of fuel-related costs
+        attributable to residential waste collection.
+    </p>
+
+</div>
+    
+    <section class="card">
+        <h2>Important Assumptions</h2>
+        <p class="note">
+            This is an estimate of <strong>fuel cost only</strong>. It does not attempt to
+            calculate labor, truck depreciation, maintenance, insurance, disposal/tipping
+            fees, administrative costs, profit, taxes, or other components of a company's
+            fuel surcharge.
+        </p>
+        
+<p class="note" style="margin-top:15px;">
+    The shared‑route calculations reflect fuel usage allocated to this neighborhood
+    based on its proportion of total route customers, including landfill travel.
+    The neighborhood‑only calculations show the fuel required to service the
+    neighborhood itself, without considering landfill distance or shared-route
+    allocation. Both values are provided to help illustrate how local collection
+    and route-wide travel contribute differently to overall fuel costs.
+</p>
+        
+
+<p class="note" style="margin-top:15px;">
+    Most rear‑loader garbage trucks serving local neighborhoods use compacting bodies
+    in the <strong>20–25 cubic‑yard</strong> range, even when the overall vehicle length
+    appears closer to <strong>30–35 feet</strong>. Modern rear loaders compress household
+    waste aggressively, allowing a truck of this size to service roughly
+    <strong>700–1,000 homes per load</strong> under typical residential conditions.
+    Actual capacity varies with route density, cart size, and the type of waste collected,
+    but this range provides a realistic benchmark for understanding how landfill travel
+    and neighborhood mileage contribute to fuel usage on a shared route.
+</p>
+
+        <p class="note" style="margin-top:15px;">
+            The default <strong>2.6 MPG</strong> is intentionally conservative for a
+            residential diesel side-loader. A real-world study of six diesel rear-loader
+            refuse trucks reported an average of 2.6 MPG, while other refuse-truck
+            categories can have materially different fuel economy.
+        </p>
+
+        <p class="note" style="margin-top:15px;">
+            A U.S. Department of Energy summary gives a broader 4.5 MPG figure for
+            refuse trucks in 2021, illustrating why the actual truck and duty cycle matter.
+            The calculator therefore lets you change the MPG assumption.
+        </p>
+
+        <p class="sources">
+            Sources:
+            <a href="https://hero.epa.gov/reference/3375242/" target="_blank" rel="noopener">EPA HERO — Real-world diesel side-loader refuse truck study</a>;
+            <a href="https://www.energy.gov/cmei/vehicles/articles/fotw-1342-may-13-2024-average-road-fuel-economy-mediumheavy-trucks-ranged-40" target="_blank" rel="noopener">U.S. Department of Energy — refuse truck fuel economy</a>.
+        </p>
+    </section>
+
+    <footer>
+        Fuel surcharge calculator — estimates only; verify route mileage, customer counts,
+        fuel economy, and actual fuel costs before using the result for billing or disputes.
+    </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+// -----------------------------
+// Utility functions
+// -----------------------------
+function getNumber(id) {
+    return Number(document.getElementById(id).value);
+}
+
+function money(value) {
+    return value.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD"
+    });
+}
+
+function number(value, decimals = 2) {
+    return value.toLocaleString("en-US", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
+}
+
+// -----------------------------
+// Main fuel‑cost calculator
+// -----------------------------
+function calculate() {
+    const error = document.getElementById("error");
+    error.style.display = "none";
+    error.textContent = "";
+
+    const landfillDistance = getNumber("landfillDistance");
+    const neighborhoodMiles = getNumber("neighborhoodMiles");
+    const neighborhoodCustomers = getNumber("neighborhoodCustomers");
+    const routeCustomers = getNumber("routeCustomers");
+    const dieselPrice = getNumber("dieselPrice");
+    const mpg = getNumber("mpg");
+    const pickupsPerMonth = getNumber("pickupsPerMonth");
+    const billingMonths = getNumber("billingMonths");
+
+    if (
+        !Number.isFinite(landfillDistance) ||
+        !Number.isFinite(neighborhoodMiles) ||
+        !Number.isFinite(neighborhoodCustomers) ||
+        !Number.isFinite(routeCustomers) ||
+        !Number.isFinite(dieselPrice) ||
+        !Number.isFinite(mpg) ||
+        !Number.isFinite(pickupsPerMonth) ||
+        !Number.isFinite(billingMonths)
+    ) {
+        showError("Please enter valid numbers in all fields.");
+        return;
+    }
+
+    if (landfillDistance < 0 || neighborhoodMiles < 0 || dieselPrice < 0 ||
+        pickupsPerMonth < 0 || billingMonths <= 0 || mpg <= 0 ||
+        neighborhoodCustomers <= 0 || routeCustomers <= 0) {
+        showError("Values must be greater than zero where appropriate. Distances, diesel price, and pickups may be zero, but MPG, customers, and billing months must be positive.");
+        return;
+    }
+
+    if (neighborhoodCustomers > routeCustomers) {
+        showError("Customers in this neighborhood cannot exceed total customers on the route.");
+        return;
+    }
+
+    const roundTripLandfillMiles = landfillDistance * 2;
+    const customerShare = neighborhoodCustomers / routeCustomers;
+    const allocatedLandfillMiles = roundTripLandfillMiles * customerShare;
+    const attributableMilesPerPickup = allocatedLandfillMiles + neighborhoodMiles;
+    const totalPickups = pickupsPerMonth * billingMonths;
+    const totalAttributableMiles = attributableMilesPerPickup * totalPickups;
+    const gallons = totalAttributableMiles / mpg;
+    const neighborhoodFuelCost = gallons * dieselPrice;
+    const perCustomer = neighborhoodFuelCost / neighborhoodCustomers;
+    // Neighborhood-only calculations (no shared-route allocation)
+    const neighborhoodOnlyMiles = neighborhoodMiles * totalPickups;
+    const neighborhoodOnlyGallons = neighborhoodOnlyMiles / mpg;
+    const neighborhoodOnlyFuelCost = neighborhoodOnlyGallons * dieselPrice;
+    const neighborhoodOnlyPerCustomer = neighborhoodOnlyFuelCost / neighborhoodCustomers;
+    
+    // Make available to printSummary()
+    window._neighborhoodOnlyMiles = neighborhoodOnlyMiles;
+    window._neighborhoodOnlyGallons = neighborhoodOnlyGallons;
+    window._neighborhoodOnlyFuelCost = neighborhoodOnlyFuelCost;
+    window._neighborhoodOnlyPerCustomer = neighborhoodOnlyPerCustomer;     
+
+    document.getElementById("roundTrip").textContent =
+        number(roundTripLandfillMiles, 1) + " mi";
+
+    document.getElementById("neighborhoodMilesResult").textContent =
+        number(neighborhoodMiles, 1) + " mi";
+
+    document.getElementById("customerShare").textContent =
+        number(customerShare * 100, 1) + "%";
+
+    document.getElementById("allocatedLandfillMiles").textContent =
+        number(allocatedLandfillMiles, 2) + " mi";
+
+    document.getElementById("milesPerPickup").textContent =
+        number(attributableMilesPerPickup, 2) + " mi";
+
+    document.getElementById("totalPickups").textContent =
+        number(totalPickups, 0);
+
+    document.getElementById("totalMiles").textContent =
+        number(totalAttributableMiles, 2) + " mi";
+
+    document.getElementById("gallons").textContent =
+        number(gallons, 2) + " gal";
+
+    document.getElementById("totalFuelCost").textContent =
+        money(neighborhoodFuelCost);
+
+    document.getElementById("customersResult").textContent =
+        number(neighborhoodCustomers, 0);
+
+    document.getElementById("perCustomer").textContent =
+        money(perCustomer);
+        
+    document.getElementById("neighborhoodOnlyFuelCost").textContent =
+        money(neighborhoodOnlyFuelCost);
+
+    document.getElementById("neighborhoodOnlyPerCustomer").textContent =
+        money(neighborhoodOnlyPerCustomer);    
+
+document.getElementById("formula").textContent =
+`1. Neighborhood share of route =
+   ${neighborhoodCustomers} ÷ ${routeCustomers}
+   = ${number(customerShare * 100, 1)}%
+
+2. Landfill round trip =
+   ${number(landfillDistance, 1)} × 2
+   = ${number(roundTripLandfillMiles, 1)} miles
+
+3. Landfill miles allocated to neighborhood =
+   ${number(roundTripLandfillMiles, 1)} × ${number(customerShare * 100, 1)}%
+   = ${number(allocatedLandfillMiles, 2)} miles per pickup
+
+4. Neighborhood-attributable miles per pickup =
+   ${number(allocatedLandfillMiles, 2)} + ${number(neighborhoodMiles, 1)}
+   = ${number(attributableMilesPerPickup, 2)} miles
+
+5. Billing-period mileage =
+   ${number(attributableMilesPerPickup, 2)} × ${number(totalPickups, 0)}
+   = ${number(totalAttributableMiles, 2)} miles
+
+6. Diesel consumed (shared-route) =
+   ${number(totalAttributableMiles, 2)} ÷ ${number(mpg, 1)}
+   = ${number(gallons, 2)} gallons
+
+7. Shared-route fuel cost =
+   ${number(gallons, 2)} × ${money(dieselPrice)}
+   = ${money(neighborhoodFuelCost)}
+
+8. Shared-route fuel cost per customer =
+   ${money(neighborhoodFuelCost)} ÷ ${number(neighborhoodCustomers, 0)}
+   = ${money(perCustomer)} per customer
+
+9. Neighborhood-only mileage =
+   ${number(neighborhoodMiles, 1)} × ${number(totalPickups, 0)}
+   = ${number(neighborhoodOnlyMiles, 2)} miles
+
+10. Neighborhood-only fuel cost =
+    ${number(neighborhoodOnlyMiles, 2)} ÷ ${number(mpg, 1)}
+    = ${number(neighborhoodOnlyGallons, 2)} gallons
+    → ${number(neighborhoodOnlyGallons, 2)} × ${money(dieselPrice)}
+    = ${money(neighborhoodOnlyFuelCost)}
+
+11. Neighborhood-only cost per customer =
+    ${money(neighborhoodOnlyFuelCost)} ÷ ${number(neighborhoodCustomers, 0)}
+    = ${money(neighborhoodOnlyPerCustomer)} per customer`;
+
+    document.getElementById("results").style.display = "block";
+    document.getElementById("results").scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+}
+
+// -----------------------------
+// Error display
+// -----------------------------
+function showError(message) {
+    const error = document.getElementById("error");
+    error.textContent = message;
+    error.style.display = "block";
+}
+
+// -----------------------------
+// Reset calculator
+// -----------------------------
+function resetCalculator() {
+    document.getElementById("landfillDistance").value = 10;
+    document.getElementById("neighborhoodMiles").value = 1.5;
+    document.getElementById("neighborhoodCustomers").value = 30;
+    document.getElementById("routeCustomers").value = 150;
+    document.getElementById("dieselPrice").value = 5.00;
+    document.getElementById("mpg").value = 2.6;
+    document.getElementById("pickupsPerMonth").value = 4;
+    document.getElementById("billingMonths").value = 2;
+
+    document.getElementById("results").style.display = "none";
+    document.getElementById("error").style.display = "none";
+}
+
+// Allow Enter key to trigger calculation
+document.querySelectorAll("input").forEach(function(input) {
+    input.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+            calculate();
+        }
+    });
+});
+
+// -----------------------------
+// Geocoding (Nominatim)
+// -----------------------------
+const LANDFILL_COORDS = { lat: 39.107341, lon: -88.561640 };
+
+async function geocodeAddress(address) {
+    const params = new URLSearchParams({
+        q: address,
+        format: "json",
+        limit: 1
+    });
+
+    const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+
+    const response = await fetch(url, {
+        headers: {
+            "Accept": "application/json",
+            "User-Agent": "EffinghamFuelSurchargeCalculator/1.0"
+        }
+    });
+
+    const data = await response.json();
+    if (!data || data.length === 0) {
+        throw new Error("Address not found.");
+    }
+
+    return {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon)
+    };
+}
+
+// -----------------------------
+// Routing (OSRM — no key needed)
+// -----------------------------
+async function getDrivingDistanceMiles(startCoords, endCoords) {
+    const url =
+        `https://router.project-osrm.org/route/v1/driving/` +
+        `${startCoords.lon},${startCoords.lat};${endCoords.lon},${endCoords.lat}` +
+        `?overview=false`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.routes || data.routes.length === 0) {
+        throw new Error("OSRM routing failed.");
+    }
+
+    const meters = data.routes[0].distance;
+    return meters / 1609.344; // meters → miles
+}
+
+// -----------------------------
+// Distance button handler
+// -----------------------------
+async function calculateLandfillDistance() {
+    const addressInput = document.getElementById("userAddress");
+    const landfillDistanceInput = document.getElementById("landfillDistance");
+
+    const userAddress = addressInput.value.trim();
+    if (!userAddress) {
+        alert("Please enter an address.");
+        return;
+    }
+
+    try {
+        const userCoords = await geocodeAddress(userAddress);
+        const miles = await getDrivingDistanceMiles(userCoords, LANDFILL_COORDS);
+        landfillDistanceInput.value = miles.toFixed(1);
+    } catch (err) {
+        console.error(err);
+        alert("Could not calculate distance. Please check the address and try again.");
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("calcDistanceBtn");
+    btn.addEventListener("click", calculateLandfillDistance);
+});
+
+// ---------- fill printable block ----------
+function printSummaryFillOnly(){
+    const addr=document.getElementById('userAddress').value;
+    document.getElementById('printAddress').textContent=addr;
+
+    document.getElementById('printLandfill').textContent=document.getElementById('roundTrip').textContent;
+    document.getElementById('printNeighborhoodMiles').textContent=document.getElementById('neighborhoodMilesResult').textContent;
+    document.getElementById('printNeighborhoodCustomers').textContent=document.getElementById('customersResult').textContent;
+    document.getElementById('printRouteCustomers').textContent=number(getNumber('routeCustomers'),0);
+    document.getElementById('printPickups').textContent=document.getElementById('totalPickups').textContent;
+
+    document.getElementById('printTotalMiles').textContent=document.getElementById('totalMiles').textContent;
+    document.getElementById('printGallons').textContent=document.getElementById('gallons').textContent;
+    document.getElementById('printFuelCost').textContent=document.getElementById('totalFuelCost').textContent;
+    document.getElementById('printPerCustomer').textContent=document.getElementById('perCustomer').textContent;
+
+    document.getElementById('printNeighborhoodOnlyMiles').textContent=number(window._neighborhoodOnlyMiles,2)+' mi';
+    document.getElementById('printNeighborhoodOnlyGallons').textContent=number(window._neighborhoodOnlyGallons,2)+' gal';
+    document.getElementById('printNeighborhoodOnlyFuelCost').textContent=money(window._neighborhoodOnlyFuelCost);
+    document.getElementById('printNeighborhoodOnlyPerCustomer').textContent=money(window._neighborhoodOnlyPerCustomer);
+}
+
+// ---------- show / hide report block ----------
+function showReportBlock(){
+    const blk=document.getElementById('printSummaryBlock');
+    blk.style.display='block';
+    blk.style.visibility='visible';
+}
+
+// ---------- print ----------
+function printSummary(){
+    printSummaryFillOnly();
+    showReportBlock();
+    window.print();
+    // optional hide after printing – can't reliably know when user finishes, so we just leave it visible
+}
+
+// ---------- PDF ----------
+function downloadPDF() {
+    // 1. Force the dynamic fields to populate data
+    printSummaryFillOnly();
+    
+    // 2. Safely grab the block container
+    const rawTemplate = document.getElementById('printSummaryBlock');
+    if (!rawTemplate) return console.error("Template container missing.");
+
+    // 3. Configure layout rules
+    const opts = {
+        margin: 0.5,
+        filename: 'Fuel-Surcharge-Report.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+    
+    // 4. Send the inner HTML directly to the generator stream in a visible sandbox wrapper
+    html2pdf()
+        .set(opts)
+        .from(`<div style="font-family:'Segoe UI',sans-serif; padding:30px; background:#fff; color:#000; width:7.5in;">${rawTemplate.innerHTML}</div>`)
+        .save()
+        .catch(err => console.error("PDF Fail:", err));
+}
+
+console.log("HTML content being sent to PDF:", htmlString);
+
+</script>
+
+</body>
+</html>
+
+
